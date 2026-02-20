@@ -262,6 +262,7 @@ export default function App() {
                 className="pl-10 pr-4 py-2 bg-white border border-zinc-200 rounded-xl text-sm focus:ring-2 focus:ring-zinc-900 outline-none w-64 transition-all"
               />
             </div>
+          
           </div>
         </header>
 
@@ -336,6 +337,8 @@ export default function App() {
               </div>
             </motion.div>
           )}
+
+          
 
           {activeTab === 'inventory' && (
             <motion.div
@@ -568,14 +571,13 @@ const SalesModule = ({ products, onComplete }: { products: Product[], onComplete
     });
     const data = await res.json();
     if (data.success) {
-      // Create a hidden form to submit and download PDF
-      const form = document.createElement('form');
-      form.method = 'GET';
-      form.action = `/api/sales/invoice/${data.invoiceId}/pdf`;
-      form.target = '_blank';
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
+      // Trigger server PDF download/open in new tab using an anchor click (more reliable)
+      const link = document.createElement('a');
+      link.href = `/api/sales/invoice/${data.invoiceId}/pdf`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
       alert('Invoice Created Successfully');
       onComplete();
