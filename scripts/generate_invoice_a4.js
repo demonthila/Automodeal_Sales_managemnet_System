@@ -30,8 +30,13 @@ function generateInvoice(path) {
   const grandTotal = subtotal - discount;
 
   // header
-  doc.fontSize(10).text('[logo]', { align: 'left' });
-  doc.moveUp();
+  // logo (if available)
+  try {
+    doc.image('/Users/sanjulathilan/Documents/GitHub/Automodeal_Sales_managemnet_System/public/logo.JPG', 50, 40, { width: 80 });
+  } catch (e) {
+    // fallback text if image not found
+    doc.fontSize(10).text('[logo]', 50, 48);
+  }
   doc.font('Helvetica-Bold').fontSize(14).text('automodeal (pvt) ltd', 150, 48);
 
   // invoice number / date
@@ -48,32 +53,31 @@ function generateInvoice(path) {
   // table header
   const tableTop = 200;
   const col = {
-    itemno: 50,
-    count: 100,
-    brand: 150,
-    part: 230,
-    model: 310,
-    description: 380,
-    qty: 500,
-    total: 540
+    // removed itemno column; shifted columns left
+    count: 50,
+    brand: 100,
+    part: 180,
+    model: 260,
+    description: 330,
+    qty: 450,
+    total: 490
   };
 
   doc.moveTo(40, tableTop-6).lineTo(555, tableTop-6).stroke('#e5e7eb');
-  doc.font('Helvetica-Bold').fontSize(9).text('item no.', col.itemno, tableTop);
-  doc.text('count', col.count, tableTop);
+  doc.font('Helvetica-Bold').fontSize(9).text('count', col.count, tableTop);
   doc.text('brand', col.brand, tableTop);
   doc.text('part no.', col.part, tableTop);
   doc.text('model', col.model, tableTop);
   doc.text('description', col.description, tableTop);
-  doc.text('qty', col.qty, tableTop, { width: 30, align: 'right' });
-  doc.text('total', col.total, tableTop, { width: 60, align: 'right' });
+  doc.text('qty', col.qty, tableTop, { width: 40, align: 'right' });
+  doc.text('total', col.total, tableTop, { width: 80, align: 'right' });
   doc.moveTo(40, tableTop+16).lineTo(555, tableTop+16).stroke('#e5e7eb');
 
   // table rows
   let y = tableTop + 24;
   doc.font('Helvetica').fontSize(9);
   items.forEach(it => {
-    doc.text(String(it.itemno), col.itemno, y);
+    // itemno removed
     doc.text(String(it.count), col.count, y);
     doc.text(it.brand, col.brand, y);
     doc.text(it.part, col.part, y);
@@ -87,16 +91,21 @@ function generateInvoice(path) {
     doc.moveTo(40, y-6).lineTo(555, y-6).stroke('#f1f5f9');
   });
 
-  // totals
-  y += 10;
-  doc.font('Helvetica').fontSize(9).text('subtotal :', 380, y, { width: 120, align: 'right' });
-  doc.text(formatCurrency(subtotal), 510, y, { width: 60, align: 'right' });
+  // totals inside table area
+  y += 6;
+  doc.moveTo(40, y-6).lineTo(555, y-6).stroke('#e5e7eb');
+  y += 8;
+  // subtotal row
+  doc.font('Helvetica').fontSize(9).text('subtotal :', col.description, y, { width: col.total - col.description, align: 'right' });
+  doc.text(formatCurrency(subtotal), col.total, y, { width: 80, align: 'right' });
   y += 14;
-  doc.text('discount :', 380, y, { width: 120, align: 'right' });
-  doc.text(formatCurrency(discount), 510, y, { width: 60, align: 'right' });
-  y += 18;
-  doc.font('Helvetica-Bold').fontSize(11).text('grand total :', 380, y, { width: 120, align: 'right' });
-  doc.text(formatCurrency(grandTotal), 510, y, { width: 60, align: 'right' });
+  // discount row
+  doc.text('discount :', col.description, y, { width: col.total - col.description, align: 'right' });
+  doc.text(formatCurrency(discount), col.total, y, { width: 80, align: 'right' });
+  y += 16;
+  // grand total row
+  doc.font('Helvetica-Bold').fontSize(11).text('grand total :', col.description, y, { width: col.total - col.description, align: 'right' });
+  doc.text(formatCurrency(grandTotal), col.total, y, { width: 80, align: 'right' });
 
   // footer
   doc.font('Helvetica').fontSize(8).fillColor('#6b7280').text('Generate Using Automodeal Sales Management Application | Developed by Novalink innovations www.novalinkinnovations.com', 48, 780, { align: 'center', width: 504 });
