@@ -1,0 +1,5 @@
+{
+  "name": "Sales Management System",
+  "description": "A secure, web-based system for managing Goods Received Notes (GRN), inventory, sales invoices, and representative issue orders with real-time stock tracking.",
+  "requestFramePermissions": []
+}
