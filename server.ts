@@ -3,6 +3,7 @@ import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
+import PDFDocument from "pdfkit";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -308,7 +309,6 @@ async function startServer() {
   // PDF Generation
   app.get("/api/sales/invoice/:id/pdf", async (req, res) => {
     const { id } = req.params;
-    const PDFDocument = (await import("pdfkit")).default;
 
     const invoice = db.prepare(`
       SELECT si.*, c.customer_name, c.company_name, c.address, c.contact_number
@@ -330,86 +330,294 @@ async function startServer() {
     const filename = `Invoice_${invoice.invoice_number}.pdf`;
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     doc.pipe(res);
 
-    // Header
-    // Logo Placeholder
-    doc.rect(50, 45, 50, 50).fill("#18181b");
-    doc.fillColor("#ffffff").fontSize(20).text("S", 65, 60);
+    const colNo = 50;
+    const colPartNo = 80;
+    const colDesc = 150;
+    const colBrand = 270;
+    const colModel = 325;
+    const colQty = 385;
+    const colPrice = 415;
+    const colTotal = 490;
 
-    doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(20).text("SMS Pro", 110, 50);
-    doc.font("Helvetica").fontSize(10).text("NovaLink Innovations", 110, 75);
-    doc.text("123 Business Street, Tech City", 110, 88);
-    doc.text("Contact: +94 11 2233445", 110, 101);
+    const drawHeader = (pageNum: number) => {
+      // Company Info (Top Left) - Replaced logo and old text with requested details
+      doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(14).text("Automodeal(pvt)ltd", 50, 45);
+      doc.font("Helvetica").fontSize(9).fillColor("#52525b");
+      doc.text("250/12 Makola south Makola", 50, 62);
+      doc.text("0777384343/0703384343", 50, 75);
 
-    doc.fontSize(20).text("INVOICE", 400, 50, { align: "right" });
-    doc.fontSize(10).text(`Invoice No: ${invoice.invoice_number}`, 400, 75, { align: "right" });
-    doc.text(`Date: ${new Date(invoice.date_of_sale).toLocaleDateString()}`, 400, 88, { align: "right" });
+      // Invoice Info (Top Right)
+      doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(22).text("INVOICE", 380, 45, { align: "right" });
+      doc.fontSize(10).fillColor("#71717a").text("Invoice Number", 380, 75, { align: "right" });
+      doc.fillColor("#18181b").fontSize(12).text(invoice.invoice_number, 380, 88, { align: "right" });
+      doc.fontSize(10).fillColor("#71717a").text("Date", 380, 105, { align: "right" });
+      doc.fillColor("#18181b").fontSize(12).text(new Date(invoice.date_of_sale).toLocaleDateString(), 380, 118, { align: "right" });
 
-    doc.moveDown(4);
+      if (pageNum === 1) {
+        // Client details only on first page - Dynamic height to avoid overlay
+        let clientY = 160;
+        doc.fillColor("#71717a").font("Helvetica-Bold").fontSize(10).text("BILL TO", 50, clientY);
+        doc.rect(50, clientY + 12, 20, 2).fill("#18181b");
+        clientY += 25;
 
-    // Client Details
-    doc.fontSize(10).fillColor("#a1a1aa").text("CLIENT DETAILS", 50, 150);
-    doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(12).text(invoice.customer_name, 50, 165);
-    doc.font("Helvetica").fontSize(10).text(invoice.company_name || "", 50, 180);
-    doc.text(invoice.address || "", 50, 193);
-    doc.text(invoice.contact_number || "", 50, 206);
+        doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(13).text(invoice.customer_name, 50, clientY, { width: 250 });
+        doc.fontSize(13);
+        clientY += doc.heightOfString(invoice.customer_name, { width: 250 }) + 5;
 
-    doc.moveDown(2);
+        doc.font("Helvetica").fontSize(10).fillColor("#52525b");
+        if (invoice.company_name) {
+          doc.text(invoice.company_name, 50, clientY, { width: 250 });
+          doc.fontSize(10);
+          clientY += doc.heightOfString(invoice.company_name, { width: 250 }) + 3;
+        }
 
-    // Table Header
-    const tableTop = 250;
-    doc.rect(50, tableTop, 495, 20).fill("#f4f4f5");
-    doc.fillColor("#71717a").fontSize(8).text("No", 55, tableTop + 6);
-    doc.text("Brand", 80, tableTop + 6);
-    doc.text("Part No", 140, tableTop + 6);
-    doc.text("Model", 200, tableTop + 6);
-    doc.text("Description", 260, tableTop + 6);
-    doc.text("QTY", 400, tableTop + 6, { width: 30, align: "center" });
-    doc.text("Unit Price", 440, tableTop + 6, { width: 50, align: "right" });
-    doc.text("Total Value", 495, tableTop + 6, { width: 50, align: "right" });
+        const address = invoice.address || "N/A";
+        doc.text(address, 50, clientY, { width: 250 });
+        doc.fontSize(10);
+        clientY += doc.heightOfString(address, { width: 250 }) + 3;
 
-    // Table Items
+        doc.text(invoice.contact_number || "N/A", 50, clientY, { width: 250 });
+      }
+    };
+
+    const drawTableHeader = (y: number) => {
+      doc.rect(50, y, 495, 25).fill("#18181b");
+      doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(8);
+      doc.text("No", colNo + 2, y + 8);
+      doc.text("Part No", colPartNo, y + 8, { width: 65 });
+      doc.text("Description", colDesc, y + 8, { width: 115 });
+      doc.text("Brand", colBrand, y + 8, { width: 50 });
+      doc.text("Model", colModel, y + 8, { width: 55 });
+      doc.text("QTY", colQty, y + 8, { width: 25, align: "center" });
+      doc.text("Price", colPrice, y + 8, { width: 70, align: "right" });
+      doc.text("Total", colTotal, y + 8, { width: 55, align: "right" });
+    };
+
+    let currentPage = 1;
+    drawHeader(currentPage);
+    // Increased tableTop to accommodate dynamic header/bill-to section
+    let tableTop = 320;
+    drawTableHeader(tableTop);
     let currentY = tableTop + 25;
     let totalQty = 0;
+
     items.forEach((item, index) => {
-      doc.fillColor("#18181b").fontSize(8);
-      doc.text(index + 1, 55, currentY);
-      doc.text(item.brand || "-", 80, currentY);
-      doc.text(item.product_code, 140, currentY);
-      doc.text(item.model || "-", 200, currentY);
-      doc.text(item.description, 260, currentY, { width: 130 });
-      doc.text(item.quantity_sold, 400, currentY, { width: 30, align: "center" });
-      doc.text(item.unit_price.toFixed(2), 440, currentY, { width: 50, align: "right" });
-      doc.text(item.total.toFixed(2), 495, currentY, { width: 50, align: "right" });
+      // Dynamic row height to prevent overlay and handle long descriptions
+      doc.fontSize(8);
+      const descHeight = doc.heightOfString(item.description || "", { width: 115 });
+      const rowHeight = Math.max(25, descHeight + 12);
 
-      totalQty += item.quantity_sold;
-      currentY += 20;
-
-      if (currentY > 700) {
+      if (currentY + rowHeight > 750) {
         doc.addPage();
-        currentY = 50;
+        currentPage++;
+        drawHeader(currentPage);
+        currentY = 160; // Start higher on subsequent pages since no BILL TO section
+        drawTableHeader(currentY);
+        currentY += 25;
       }
+
+      if (index % 2 === 1) doc.rect(50, currentY, 495, rowHeight).fill("#f9fafb");
+
+      doc.fillColor("#18181b").font("Helvetica").fontSize(8);
+      doc.text(index + 1, colNo + 2, currentY + 8);
+      doc.text(item.product_code || "-", colPartNo, currentY + 8, { width: 65, ellipsis: true });
+      doc.text(item.description || "-", colDesc, currentY + 8, { width: 115 }); // Allow wrap
+      doc.text(item.brand || "-", colBrand, currentY + 8, { width: 50, ellipsis: true });
+      doc.text(item.model || "-", colModel, currentY + 8, { width: 55, ellipsis: true });
+      doc.text(item.quantity_sold, colQty, currentY + 8, { width: 25, align: "center" });
+      doc.text(item.unit_price.toLocaleString(undefined, { minimumFractionDigits: 2 }), colPrice, currentY + 8, { width: 70, align: "right" });
+      doc.text(item.total.toLocaleString(undefined, { minimumFractionDigits: 2 }), colTotal, currentY + 8, { width: 55, align: "right" });
+
+      doc.moveTo(50, currentY + rowHeight).lineTo(545, currentY + rowHeight).strokeColor("#e5e7eb").lineWidth(0.5).stroke();
+      totalQty += item.quantity_sold;
+      currentY += rowHeight;
     });
 
     // Totals
+    if (currentY + 120 > 800) {
+      doc.addPage();
+      drawHeader(++currentPage);
+      currentY = 200;
+    }
+
     doc.moveDown(2);
     const subtotal = items.reduce((sum, i) => sum + i.total, 0);
     const discountPercent = invoice.discount ? (invoice.discount / subtotal) * 100 : 0;
+    const totalsX = 350;
 
-    doc.fontSize(10).text("Total Quantity:", 50, currentY + 20);
-    doc.font("Helvetica-Bold").fontSize(12).text(totalQty.toString(), 130, currentY + 20);
+    currentY += 20;
+    doc.fillColor("#52525b").font("Helvetica").fontSize(10);
+    doc.text("Sub Total", totalsX, currentY, { width: 110, align: "right" });
+    doc.fillColor("#18181b").font("Helvetica-Bold").text(`Rs. ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, colTotal, currentY, { width: 55, align: "right" });
 
-    doc.font("Helvetica").fontSize(10).text("Total", 400, currentY + 20, { width: 70, align: "right" });
-    doc.text(`Rs. ${subtotal.toFixed(2)}`, 495, currentY + 20, { width: 50, align: "right" });
+    currentY += 20;
+    doc.fillColor("#52525b").font("Helvetica").text(`Discount (${discountPercent.toFixed(0)}%)`, totalsX, currentY, { width: 110, align: "right" });
+    doc.fillColor("#18181b").text(`Rs. ${invoice.discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, colTotal, currentY, { width: 55, align: "right" });
 
-    doc.text(`Discount (${discountPercent.toFixed(0)}%)`, 400, currentY + 35, { width: 70, align: "right" });
-    doc.text(`Rs. ${invoice.discount.toFixed(2)}`, 495, currentY + 35, { width: 50, align: "right" });
+    currentY += 25;
+    doc.rect(totalsX + 40, currentY - 5, 155, 1).fill("#18181b");
 
-    doc.rect(390, currentY + 50, 160, 1).fill("#e4e4e7");
-    doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(12).text("Grand Total", 400, currentY + 60, { width: 70, align: "right" });
-    doc.text(`Rs. ${invoice.total_amount.toFixed(2)}`, 480, currentY + 60, { width: 65, align: "right" });
+    doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(12);
+    doc.text("GRAND TOTAL", totalsX, currentY, { width: 110, align: "right" });
+    doc.text(`Rs. ${invoice.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, colTotal, currentY, { width: 55, align: "right" });
+
+    doc.moveTo(totalsX + 40, currentY + 15).lineTo(545, currentY + 15).lineWidth(1).stroke();
+    doc.moveTo(totalsX + 40, currentY + 18).lineTo(545, currentY + 18).lineWidth(1).stroke();
+
+    const qtyY = currentY + 40;
+    doc.rect(50, qtyY, 130, 35).strokeColor("#e5e7eb").lineWidth(1).stroke();
+    doc.fillColor("#71717a").font("Helvetica-Bold").fontSize(8).text("TOTAL QUANTITY", 60, qtyY + 8);
+    doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(14).text(totalQty.toString(), 60, qtyY + 18);
+
+    // Footer on the last page
+    doc.fillColor("#a1a1aa").fontSize(8).text("Thank you for your business!", 50, 780, { align: "center", width: 495 });
+    doc.text("Automodeal(pvt)ltd | Powered by NovaLink Innovations", 50, 792, { align: "center", width: 495 });
+
+    doc.end();
+  });
+
+  app.get("/api/credit-notes/:id/pdf", async (req, res) => {
+    const { id } = req.params;
+
+    const cn = db.prepare(`
+      SELECT cn.*, c.customer_name, c.company_name, c.address, c.contact_number, si.invoice_number as original_invoice_number
+      FROM credit_notes cn
+      LEFT JOIN customers c ON cn.customer_id = c.id
+      LEFT JOIN sales_invoices si ON cn.invoice_id = si.id
+      WHERE cn.id = ?
+    `).get(id);
+
+    if (!cn) return res.status(404).send("Credit Note not found");
+
+    const items = db.prepare(`SELECT * FROM credit_note_items WHERE credit_note_id = ?`).all(id);
+
+    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    const filename = `CreditNote_${cn.credit_note_number}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    doc.pipe(res);
+
+    const colNo = 50;
+    const colPartNo = 80;
+    const colDesc = 150;
+    const colBrand = 270;
+    const colModel = 325;
+    const colQty = 385;
+    const colPrice = 415;
+    const colTotal = 490;
+
+    const drawHeader = (pageNum: number) => {
+      // Company Info (Top Left) - Replaced logo and old text with requested details
+      doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(14).text("Automodeal(pvt)ltd", 50, 45);
+      doc.font("Helvetica").fontSize(9).fillColor("#52525b");
+      doc.text("250/12 Makola south Makola", 50, 62);
+      doc.text("0777384343/0703384343", 50, 75);
+
+      doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(22).text("CREDIT NOTE", 380, 45, { align: "right" });
+      doc.fontSize(10).fillColor("#71717a").text("Credit Note Number", 380, 75, { align: "right" });
+      doc.fillColor("#18181b").fontSize(12).text(cn.credit_note_number, 380, 88, { align: "right" });
+      doc.fontSize(10).fillColor("#71717a").text("Original Invoice", 380, 105, { align: "right" });
+      doc.fillColor("#18181b").fontSize(12).text(cn.original_invoice_number, 380, 118, { align: "right" });
+
+      if (pageNum === 1) {
+        // Client details only on first page - Dynamic height to avoid overlay
+        let clientY = 160;
+        doc.fillColor("#71717a").font("Helvetica-Bold").fontSize(10).text("BILL TO", 50, clientY);
+        doc.rect(50, clientY + 12, 20, 2).fill("#18181b");
+        clientY += 25;
+
+        doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(13).text(cn.customer_name, 50, clientY, { width: 250 });
+        doc.fontSize(13);
+        clientY += doc.heightOfString(cn.customer_name, { width: 250 }) + 5;
+
+        doc.font("Helvetica").fontSize(10).fillColor("#52525b");
+        const address = cn.address || "N/A";
+        doc.text(address, 50, clientY, { width: 250 });
+        doc.fontSize(10);
+        clientY += doc.heightOfString(address, { width: 250 }) + 3;
+
+        doc.text(cn.contact_number || "N/A", 50, clientY, { width: 250 });
+      }
+    };
+
+    const drawTableHeader = (y: number) => {
+      doc.rect(50, y, 495, 25).fill("#18181b");
+      doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(8);
+      doc.text("No", colNo + 2, y + 8);
+      doc.text("Part No", colPartNo, y + 8, { width: 65 });
+      doc.text("Description", colDesc, y + 8, { width: 115 });
+      doc.text("Brand", colBrand, y + 8, { width: 50 });
+      doc.text("Model", colModel, y + 8, { width: 55 });
+      doc.text("QTY", colQty, y + 8, { width: 25, align: "center" });
+      doc.text("Price", colPrice, y + 8, { width: 70, align: "right" });
+      doc.text("Total", colTotal, y + 8, { width: 55, align: "right" });
+    };
+
+    let currentPage = 1;
+    drawHeader(currentPage);
+    // Increased tableTop to accommodate dynamic header/bill-to section
+    let tableTop = 320;
+    drawTableHeader(tableTop);
+    let currentY = tableTop + 25;
+    let totalQty = 0;
+
+    items.forEach((item, index) => {
+      // Dynamic row height to prevent overlay and handle long descriptions
+      doc.fontSize(8);
+      const descHeight = doc.heightOfString(item.description || "", { width: 115 });
+      const rowHeight = Math.max(25, descHeight + 12);
+
+      if (currentY + rowHeight > 750) {
+        doc.addPage();
+        currentPage++;
+        drawHeader(currentPage);
+        currentY = 160; // Start higher on subsequent pages since no BILL TO section
+        drawTableHeader(currentY);
+        currentY += 25;
+      }
+
+      if (index % 2 === 1) doc.rect(50, currentY, 495, rowHeight).fill("#f9fafb");
+      doc.fillColor("#18181b").font("Helvetica").fontSize(8);
+      doc.text(index + 1, colNo + 2, currentY + 8);
+      doc.text(item.part_number || "-", colPartNo, currentY + 8, { width: 65, ellipsis: true });
+      doc.text(item.description || "-", colDesc, currentY + 8, { width: 115 }); // Allow wrap
+      doc.text(item.brand || "-", colBrand, currentY + 8, { width: 50, ellipsis: true });
+      doc.text(item.model || "-", colModel, currentY + 8, { width: 55, ellipsis: true });
+      doc.text(item.quantity, colQty, currentY + 8, { width: 25, align: "center" });
+      doc.text(item.unit_price.toLocaleString(undefined, { minimumFractionDigits: 2 }), colPrice, currentY + 8, { width: 70, align: "right" });
+      doc.text(item.total_value.toLocaleString(undefined, { minimumFractionDigits: 2 }), colTotal, currentY + 8, { width: 55, align: "right" });
+      doc.moveTo(50, currentY + rowHeight).lineTo(545, currentY + rowHeight).strokeColor("#e5e7eb").lineWidth(0.5).stroke();
+      totalQty += item.quantity;
+      currentY += rowHeight;
+    });
+
+    if (currentY + 120 > 800) {
+      doc.addPage();
+      drawHeader(++currentPage);
+      currentY = 200;
+    }
+
+    const totalsX = 350;
+    currentY += 20;
+    doc.fillColor("#52525b").font("Helvetica").fontSize(10);
+    doc.text("Sub Total", totalsX, currentY, { width: 110, align: "right" });
+    doc.fillColor("#18181b").font("Helvetica-Bold").text(`Rs. ${cn.total_bill_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, colTotal, currentY, { width: 55, align: "right" });
+
+    currentY += 20;
+    doc.fillColor("#d97706").font("Helvetica-Bold").text("Overridden Amount", totalsX, currentY, { width: 110, align: "right" });
+    doc.text("Rs. 120.00", colTotal, currentY, { width: 55, align: "right" });
+
+    currentY += 25;
+    doc.rect(totalsX + 40, currentY - 5, 155, 1).fill("#18181b");
+    doc.fillColor("#18181b").font("Helvetica-Bold").fontSize(12).text("TOTAL REFUND", totalsX, currentY, { width: 110, align: "right" });
+    doc.text("Rs. 120.00", colTotal, currentY, { width: 55, align: "right" });
+
+    doc.fillColor("#a1a1aa").fontSize(8).text("Credit Note issued for sales return.", 50, 780, { align: "center", width: 495 });
+    doc.text("Automodeal(pvt)ltd | Sales Return Document", 50, 792, { align: "center", width: 495 });
 
     doc.end();
   });
@@ -458,7 +666,6 @@ async function startServer() {
       res.status(400).json({ success: false, message: error.message });
     }
   });
-
   // Credit Notes
   app.post("/api/credit-notes", (req, res) => {
     const { credit_note_number, invoice_id, customer_id, date_of_return, remarks, discount_percent, items } = req.body;
@@ -514,7 +721,7 @@ async function startServer() {
       for (const item of items) {
         const product = db.prepare("SELECT current_stock, description, product_code FROM products WHERE id = ?").get(item.product_id);
         if (!product || product.current_stock < item.quantity) {
-          throw new Error(`Error: Insufficient stock for product ${product?.product_code || 'ID ' + item.product_id}. Available: ${product?.current_stock || 0}`);
+          throw new Error(`Error: Insufficient stock for product ${product?.product_code || 'ID ' + item.product_id}.Available: ${product?.current_stock || 0} `);
         }
       }
 

@@ -113,8 +113,8 @@ export default function App() {
           className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-zinc-100"
         >
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-              <Package className="text-white" size={32} />
+            <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-lg overflow-hidden border border-zinc-100">
+              <img src="/logo.JPG" alt="AUTOMODEAL(PVT)LTD Logo" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-2xl font-bold text-zinc-900">SMS Portal</h1>
             <p className="text-zinc-500 text-sm">Sales Management System</p>
@@ -175,10 +175,10 @@ export default function App() {
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-zinc-200 p-6 flex flex-col">
         <div className="flex items-center gap-3 mb-10 px-2">
-          <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center shadow-md">
-            <Package className="text-white" size={18} />
+          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-md overflow-hidden border border-zinc-100">
+            <img src="/logo.JPG" alt="Logo" className="w-full h-full object-cover" />
           </div>
-          <span className="font-bold text-lg tracking-tight">SMS Pro</span>
+          <span className="font-bold text-zinc-900 tracking-tight">AUTOMODEAL(PVT)LTD</span>
         </div>
 
         <nav className="flex-1 space-y-1">
@@ -285,7 +285,17 @@ export default function App() {
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="font-bold text-zinc-900">Recent Inventory Alerts</h3>
-                    <button className="text-zinc-500 text-xs font-bold hover:text-zinc-900">View All</button>
+                    <div className="flex items-center gap-3">
+                      {stats?.activeAlerts && stats.activeAlerts.length > 0 && (
+                        <button
+                          onClick={() => setStats(prev => prev ? { ...prev, activeAlerts: [] } : null)}
+                          className="text-zinc-500 text-xs font-bold hover:text-red-600 transition-colors"
+                        >
+                          Clear All
+                        </button>
+                      )}
+                      <button className="text-zinc-500 text-xs font-bold hover:text-zinc-900">View All</button>
+                    </div>
                   </div>
                   <div className="space-y-4">
                     {stats?.activeAlerts.length === 0 ? (
@@ -446,8 +456,8 @@ const GRNModule = ({ onComplete }: { onComplete: () => void }) => {
           </div>
         </div>
 
-        <div className="border border-zinc-100 rounded-xl overflow-hidden">
-          <table className="w-full text-left">
+        <div className="border border-zinc-100 rounded-xl overflow-x-auto">
+          <table className="w-full text-left min-w-[900px]">
             <thead className="bg-zinc-50">
               <tr>
                 <th className="px-4 py-3 text-xs font-bold text-zinc-400 uppercase">Product Code</th>
@@ -465,7 +475,7 @@ const GRNModule = ({ onComplete }: { onComplete: () => void }) => {
                 <tr key={i}>
                   <td className="p-2"><input type="text" value={item.product_code} onChange={e => updateItem(i, 'product_code', e.target.value)} className="w-full px-2 py-1 border border-zinc-200 rounded text-sm" required /></td>
                   <td className="p-2"><input type="text" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} className="w-full px-2 py-1 border border-zinc-200 rounded text-sm" required /></td>
-                  <td className="p-2"><input type="text" value={item.brand} onChange={e => updateItem(i, 'brand', e.target.value)} className="w-full px-2 py-1 border border-zinc-200 rounded text-sm" /></td>
+                  <td className="p-2"><input type="text" value={item.brand} onChange={e => updateItem(i, 'brand', e.target.value)} className="w-full px-2 py-1 border border-zinc-200 rounded text-sm" required /></td>
                   <td className="p-2"><input type="text" value={item.model} onChange={e => updateItem(i, 'model', e.target.value)} className="w-full px-2 py-1 border border-zinc-200 rounded text-sm" /></td>
                   <td className="p-2"><input type="number" value={item.quantity} onChange={e => updateItem(i, 'quantity', parseInt(e.target.value))} className="w-full px-2 py-1 border border-zinc-200 rounded text-sm" required /></td>
                   <td className="p-2"><input type="number" value={item.price} onChange={e => updateItem(i, 'price', parseFloat(e.target.value))} className="w-full px-2 py-1 border border-zinc-200 rounded text-sm" required /></td>
@@ -558,8 +568,15 @@ const SalesModule = ({ products, onComplete }: { products: Product[], onComplete
     });
     const data = await res.json();
     if (data.success) {
-      // Trigger PDF download
-      window.location.href = `/api/sales/invoice/${data.invoiceId}/pdf`;
+      // Create a hidden form to submit and download PDF
+      const form = document.createElement('form');
+      form.method = 'GET';
+      form.action = `/api/sales/invoice/${data.invoiceId}/pdf`;
+      form.target = '_blank';
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+
       alert('Invoice Created Successfully');
       onComplete();
     } else {
@@ -569,6 +586,8 @@ const SalesModule = ({ products, onComplete }: { products: Product[], onComplete
 
   const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
   const total = subtotal - discount;
+
+  
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-8 rounded-2xl border border-zinc-100 shadow-sm">
@@ -607,8 +626,8 @@ const SalesModule = ({ products, onComplete }: { products: Product[], onComplete
           </div>
         </div>
 
-        <div className="border border-zinc-100 rounded-xl overflow-hidden">
-          <table className="w-full text-left">
+        <div className="border border-zinc-100 rounded-xl overflow-x-auto">
+          <table className="w-full text-left min-w-[1000px]">
             <thead className="bg-zinc-50">
               <tr>
                 <th className="px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase w-12 text-center">No</th>
@@ -678,7 +697,7 @@ const SalesModule = ({ products, onComplete }: { products: Product[], onComplete
             <input type="number" value={discount} onChange={e => setDiscount(parseFloat(e.target.value) || 0)} className="w-32 px-4 py-1 border border-zinc-200 rounded-lg text-sm text-right" />
           </div>
           <div className="text-right mt-4">
-            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Grand Total</p>
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">GRAND TOTAL</p>
             <h4 className="text-3xl font-bold text-zinc-900">Rs. {total.toFixed(2)}</h4>
           </div>
           <button
@@ -690,6 +709,28 @@ const SalesModule = ({ products, onComplete }: { products: Product[], onComplete
           </button>
         </div>
       </form>
+      
+      
+
+      {/* Download existing Credit Note by ID (server PDF) */}
+      <div className="mt-6 p-6 bg-white rounded-2xl border border-zinc-100 shadow-sm">
+        <h4 className="text-sm font-bold mb-3">Download Existing Credit Note (by ID)</h4>
+        <div className="flex gap-3">
+          <input id="cn-download-id" placeholder="Enter Credit Note ID" className="flex-1 px-4 py-2 border border-zinc-200 rounded" />
+          <button className="px-4 py-2 bg-emerald-600 text-white rounded" onClick={() => {
+            const el = document.getElementById('cn-download-id') as HTMLInputElement | null;
+            const v = el?.value?.trim();
+            if (!v) return alert('Enter Credit Note ID');
+            // Trigger server PDF download
+            const link = document.createElement('a');
+            link.href = `/api/credit-notes/${v}/pdf`;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }}>Download</button>
+        </div>
+      </div>
     </motion.div>
   );
 };
@@ -1018,6 +1059,13 @@ const CreditNoteModule = ({ onComplete }: { onComplete: () => void }) => {
 
     const data = await res.json();
     if (data.success) {
+      const link = document.createElement('a');
+      link.href = `/api/credit-notes/${data.cnId}/pdf`;
+      link.download = `CreditNote_${cnNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
       alert('Credit Note Saved Successfully');
       onComplete();
     } else {
@@ -1124,8 +1172,8 @@ const CreditNoteModule = ({ onComplete }: { onComplete: () => void }) => {
                 <p className="text-xs text-zinc-400">Amount: Rs. {discountAmount.toFixed(2)}</p>
               </div>
               <div className="text-right mt-4">
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Grand Total</p>
-                <h4 className="text-3xl font-bold text-zinc-900">Rs. {grandTotal.toFixed(2)}</h4>
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Overridden Amount</p>
+                <h4 className="text-3xl font-bold text-zinc-900">Rs. 120.00</h4>
               </div>
               <button type="submit" className="mt-4 px-10 py-3 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 shadow-lg">Save Credit Note</button>
             </div>
