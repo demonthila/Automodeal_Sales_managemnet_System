@@ -214,20 +214,18 @@ async function startServer() {
     const pageMargin = (doc.page.margins && doc.page.margins.left) ? doc.page.margins.left : 50;
     const usableWidth = pageWidth - pageMargin * 2;
 
-    // Columns to match sample: No | Brand | Part no | Model | Description | Qty | Total
+    // Columns to match sample: Brand | Part no | Model | Description | Qty | Total (removed No column)
     const colWidths = {
-      no: 40,
       brand: 90,
       part: 90,
       model: 80,
       qty: 60,
       total: 110,
-      desc: Math.max(usableWidth - (40 + 90 + 90 + 80 + 60 + 110), 250)
+      desc: Math.max(usableWidth - (90 + 90 + 80 + 60 + 110), 250)
     } as any;
 
     const colX: any = {};
-    colX.no = pageMargin;
-    colX.brand = colX.no + colWidths.no;
+    colX.brand = pageMargin;
     colX.part = colX.brand + colWidths.brand;
     colX.model = colX.part + colWidths.part;
     colX.desc = colX.model + colWidths.model;
@@ -237,12 +235,15 @@ async function startServer() {
     const headerHeight = 40;
 
     const drawHeader = (pageNum: number) => {
-      const logoPath = path.join(__dirname, 'dist', 'logo.JPG');
-      const logoExists = fs.existsSync(logoPath);
-      if (logoExists) {
-        try {
-          doc.image(logoPath, pageMargin, 36, { width: 90, height: 60 });
-        } catch (e) {}
+      // try public logo first, then fallback to dist
+      const logoCandidates = [path.join(process.cwd(), 'public', 'logo.JPG'), path.join(__dirname, 'dist', 'logo.JPG')];
+      let logoPath = '';
+      for (const p of logoCandidates) {
+        if (fs.existsSync(p)) { logoPath = p; break; }
+      }
+      const logoExists = !!logoPath;
+      if (logoPath) {
+        try { doc.image(logoPath, pageMargin, 36, { width: 90, height: 60 }); } catch (e) {}
       }
 
       // Address box to the right of logo
@@ -305,12 +306,11 @@ async function startServer() {
       doc.fillColor('#111827').font('Helvetica-Bold').fontSize(10);
       const textY = y + 12;
       const pad = 6;
-      doc.text('No', colX.no + pad, textY, { width: colWidths.no - pad, align: 'left' });
       doc.text('Brand', colX.brand + pad, textY, { width: colWidths.brand - pad, align: 'left' });
       doc.text('Part no', colX.part + pad, textY, { width: colWidths.part - pad, align: 'left' });
       doc.text('Model', colX.model + pad, textY, { width: colWidths.model - pad, align: 'left' });
       doc.text('Description', colX.desc + pad, textY, { width: colWidths.desc - pad, align: 'left' });
-      doc.text('Qty', colX.qty, textY, { width: colWidths.qty - pad, align: 'center' });
+      doc.text('Qty', colX.qty + pad, textY, { width: colWidths.qty - pad, align: 'center' });
       doc.text('Total', colX.total - 6, textY, { width: colWidths.total, align: 'right' });
 
       // top/bottom border and vertical separators
@@ -346,9 +346,8 @@ async function startServer() {
       }
 
       const cellPad = 6;
-      // row contents
+      // row contents (No column removed)
       doc.fillColor('#111827').font('Helvetica').fontSize(9);
-      doc.text(String(index + 1), colX.no + cellPad, currentY + 8, { width: colWidths.no - cellPad, align: 'left' });
       doc.text(item.brand || '-', colX.brand + cellPad, currentY + 8, { width: colWidths.brand - cellPad, align: 'left' });
       doc.text(item.product_code || '-', colX.part + cellPad, currentY + 8, { width: colWidths.part - cellPad, align: 'left' });
       doc.text(item.model || '-', colX.model + cellPad, currentY + 8, { width: colWidths.model - cellPad, align: 'left' });
@@ -360,7 +359,7 @@ async function startServer() {
       // row bottom border and vertical grid lines
       const ruleEndXRow = pageMargin + usableWidth;
       doc.moveTo(pageMargin, currentY + rowHeight).lineTo(ruleEndXRow, currentY + rowHeight).strokeColor('#e5e7eb').lineWidth(1).stroke();
-      [colX.no, colX.brand, colX.part, colX.model, colX.desc, colX.qty, colX.total, pageMargin + usableWidth].forEach(x => {
+      [colX.brand, colX.part, colX.model, colX.desc, colX.qty, colX.total, pageMargin + usableWidth].forEach(x => {
         doc.moveTo(x, currentY).lineTo(x, currentY + rowHeight).strokeColor('#e5e7eb').lineWidth(1).stroke();
       });
 

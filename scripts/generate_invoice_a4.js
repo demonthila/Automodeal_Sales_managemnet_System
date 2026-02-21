@@ -32,16 +32,19 @@ function generateInvoice(path) {
   // header
   // logo (if available)
   try {
-    doc.image('/Users/sanjulathilan/Documents/GitHub/Automodeal_Sales_managemnet_System/public/logo.JPG', 50, 40, { width: 80 });
+    doc.image('/Users/sanjulathilan/Documents/GitHub/Automodeal_Sales_managemnet_System/public/logo.JPG', 48, 36, { width: 80 });
   } catch (e) {
     // fallback text if image not found
-    doc.fontSize(10).text('[logo]', 50, 48);
+    doc.fontSize(10).text('[logo]', 48, 44);
   }
-  doc.font('Helvetica-Bold').fontSize(14).text('automodeal (pvt) ltd', 150, 48);
 
-  // invoice number / date
-  doc.font('Helvetica').fontSize(9).text('invoice number: ' + invoiceNumber, 400, 48, { align: 'left' });
-  doc.text('date: ' + today, 400, 64);
+  // company title centered
+  doc.font('Helvetica-Bold').fontSize(18).text('automodeal (pvt) ltd', 0, 48, { align: 'center' });
+
+  // invoice number / date (top-right)
+  const rightX = doc.page.width - 150;
+  doc.font('Helvetica').fontSize(9).text('invoice number: ' + invoiceNumber, rightX, 48);
+  doc.text('date: ' + today, rightX, 64);
 
   // customer details
   doc.moveDown(1);
@@ -51,30 +54,30 @@ function generateInvoice(path) {
   doc.text('- contact: ' + customer.contact, 50, 164);
 
   // table header
-  const tableTop = 200;
+  const tableTop = 220;
   const col = {
-    // removed itemno column; shifted columns left
-    count: 50,
-    brand: 100,
-    part: 180,
-    model: 260,
-    description: 330,
-    qty: 450,
-    total: 490
+    // columns adjusted to match structure
+    count: 60,
+    brand: 110,
+    part: 190,
+    model: 250,
+    description: 300,
+    qty: 460,
+    total: 520
   };
 
-  doc.moveTo(40, tableTop-6).lineTo(555, tableTop-6).stroke('#e5e7eb');
-  doc.font('Helvetica-Bold').fontSize(9).text('count', col.count, tableTop);
+  doc.moveTo(40, tableTop-6).lineTo(doc.page.width - 40, tableTop-6).stroke('#e5e7eb');
+  doc.font('Helvetica-Bold').fontSize(10).text('count', col.count, tableTop);
   doc.text('brand', col.brand, tableTop);
   doc.text('part no.', col.part, tableTop);
   doc.text('model', col.model, tableTop);
   doc.text('description', col.description, tableTop);
   doc.text('qty', col.qty, tableTop, { width: 40, align: 'right' });
   doc.text('total', col.total, tableTop, { width: 80, align: 'right' });
-  doc.moveTo(40, tableTop+16).lineTo(555, tableTop+16).stroke('#e5e7eb');
+  doc.moveTo(40, tableTop+18).lineTo(doc.page.width - 40, tableTop+18).stroke('#e5e7eb');
 
   // table rows
-  let y = tableTop + 24;
+  let y = tableTop + 28;
   doc.font('Helvetica').fontSize(9);
   items.forEach(it => {
     // itemno removed
@@ -82,9 +85,9 @@ function generateInvoice(path) {
     doc.text(it.brand, col.brand, y);
     doc.text(it.part, col.part, y);
     doc.text(it.model, col.model, y);
-    doc.text(it.description, col.description, y, { width: 110 });
-    doc.text(String(it.qty), col.qty, y, { width: 30, align: 'right' });
-    doc.text(formatCurrency(it.total), col.total, y, { width: 60, align: 'right' });
+    doc.text(it.description, col.description, y, { width: 160 });
+    doc.text(String(it.qty), col.qty, y, { width: 40, align: 'right' });
+    doc.text(formatCurrency(it.total), col.total, y, { width: 80, align: 'right' });
 
     // row underline
     y += 20;
@@ -92,9 +95,9 @@ function generateInvoice(path) {
   });
 
   // totals inside table area
-  y += 6;
-  doc.moveTo(40, y-6).lineTo(555, y-6).stroke('#e5e7eb');
   y += 8;
+  doc.moveTo(40, y-6).lineTo(doc.page.width - 40, y-6).stroke('#e5e7eb');
+  y += 10;
   // subtotal row
   doc.font('Helvetica').fontSize(9).text('subtotal :', col.description, y, { width: col.total - col.description, align: 'right' });
   doc.text(formatCurrency(subtotal), col.total, y, { width: 80, align: 'right' });
@@ -102,9 +105,9 @@ function generateInvoice(path) {
   // discount row
   doc.text('discount :', col.description, y, { width: col.total - col.description, align: 'right' });
   doc.text(formatCurrency(discount), col.total, y, { width: 80, align: 'right' });
-  y += 16;
-  // grand total row
-  doc.font('Helvetica-Bold').fontSize(11).text('grand total :', col.description, y, { width: col.total - col.description, align: 'right' });
+  y += 18;
+  // grand total row (emphasized)
+  doc.font('Helvetica-Bold').fontSize(13).text('grand total :', col.description, y, { width: col.total - col.description, align: 'right' });
   doc.text(formatCurrency(grandTotal), col.total, y, { width: 80, align: 'right' });
 
   // footer
